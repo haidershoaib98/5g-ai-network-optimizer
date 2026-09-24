@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>5G Network Intelligence Agent</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+</head>
+
+<body>
+
+    <main class="container">
+
+        <h1>5G Network Intelligence Agent</h1>
+
+        <p class="subtitle">
+            AI-assisted optimization of Connected and Autonomous
+            Vehicle V2I networks.
+        </p>
+
+        <textarea
+            id="questionInput"
+            placeholder="Example: How does traffic flow and BS density change from 900 Mbps to 1.1 Gbps for alpha 3?"
+        ></textarea>
+
+        <button id="askButton">
+            Ask Agent
+        </button>
+
+        <button id="thesisPlotButton">
+            Generate Thesis Plot
+        </button>
+
+        <div
+            id="loading"
+            class="hidden"
+        >
+            Analyzing network...
+        </div>
+
+
+        <section
+            id="metricsSection"
+            class="hidden"
+        >
+            <h2>Network Results</h2>
+
+            <div id="metricsContainer"></div>
+        </section>
+
+
+        <section
+            id="chartsSection"
+            class="hidden"
+        >
+            <h2>Network Analysis Charts</h2>
+
+            <div class="chart-card">
+                <canvas id="trafficFlowChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <canvas id="bsDensityChart"></canvas>
+            </div>
+        </section>
+
+
+        <section
+            id="responseSection"
+            class="hidden"
+        >
+            <h2>Agent Analysis</h2>
+
+            <div id="responseText"></div>
+        </section>
+
+    </main>
+
+
+    <!-- Chart.js must load BEFORE script.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
