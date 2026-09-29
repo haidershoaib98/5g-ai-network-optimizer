@@ -6,6 +6,15 @@ from backend.optimizer import (
     run_threshold_sweep,
 )
 
+from backend.reliability import (
+    calculate_network_outage,
+    run_outage_sweep,
+)
+
+from backend.network_intelligence import (
+    analyze_optimized_network_reliability,
+)
+
 
 client = genai.Client()
 
@@ -56,22 +65,6 @@ def compare_network_scenarios(
 ):
     """
     Compare two CAV V2I network scenarios.
-
-    Args:
-        data_rate_threshold_1:
-            Required data rate for scenario 1 in bits per second.
-
-        path_loss_exponent_1:
-            Path loss exponent for scenario 1.
-
-        data_rate_threshold_2:
-            Required data rate for scenario 2 in bits per second.
-
-        path_loss_exponent_2:
-            Path loss exponent for scenario 2.
-
-    Returns:
-        Optimization results for both scenarios.
     """
 
     global latest_tool_result
@@ -106,24 +99,8 @@ def analyze_threshold_range(
     num_points: int = 20,
 ):
     """
-    Analyze network performance across a range of
-    data-rate thresholds.
-
-    Args:
-        start_threshold:
-            Starting threshold in bits per second.
-
-        end_threshold:
-            Ending threshold in bits per second.
-
-        path_loss_exponent:
-            Wireless path loss exponent.
-
-        num_points:
-            Number of points to calculate across the range.
-
-    Returns:
-        Optimization results for every threshold.
+    Analyze network performance across a range
+    of data-rate thresholds.
     """
 
     global latest_tool_result
@@ -143,60 +120,205 @@ def analyze_threshold_range(
     return results
 
 
+def calculate_outage_tool(
+    bs_density: float,
+    vehicle_speed: float,
+    data_rate_threshold: float = 100e6,
+    path_loss_exponent: float = 3,
+):
+    """
+    Calculate outage probability for one
+    BS-density / vehicle-speed scenario.
+    """
+
+    global latest_tool_result
+
+    result = calculate_network_outage(
+        bs_density=bs_density,
+        vehicle_speed=vehicle_speed,
+        data_rate_threshold=data_rate_threshold,
+        path_loss_exponent=path_loss_exponent,
+    )
+
+    latest_tool_result = {
+        "tool": "calculate_outage",
+        "data": result,
+    }
+
+    return result
+
+
+def analyze_outage_range(
+    vehicle_speed: float,
+    min_bs_density: float = 0.001,
+    max_bs_density: float = 0.02,
+    step: float = 0.001,
+    data_rate_threshold: float = 100e6,
+    path_loss_exponent: float = 3,
+):
+    """
+    Analyze outage probability across a range
+    of BS densities for a given vehicle speed.
+    """
+
+    global latest_tool_result
+
+    results = run_outage_sweep(
+        vehicle_speed=vehicle_speed,
+        min_bs_density=min_bs_density,
+        max_bs_density=max_bs_density,
+        step=step,
+        data_rate_threshold=data_rate_threshold,
+        path_loss_exponent=path_loss_exponent,
+    )
+
+    latest_tool_result = {
+        "tool": "analyze_outage_range",
+        "data": results,
+    }
+
+    return results
+
+def analyze_optimized_network_reliability_tool(
+    data_rate_threshold: float,
+    path_loss_exponent: float,
+    reliability_vehicle_speed: float,
+):
+    global latest_tool_result
+
+    result = analyze_optimized_network_reliability(
+        data_rate_threshold=data_rate_threshold,
+        path_loss_exponent=path_loss_exponent,
+        reliability_vehicle_speed=reliability_vehicle_speed,
+    )
+
+    latest_tool_result = {
+        "tool": "analyze_optimized_network_reliability",
+        "data": result,
+    }
+
+    return result
+
 def ask_agent(question: str):
     global latest_tool_result
 
     # Reset before every question
     latest_tool_result = None
 
-    response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
-        contents=question,
-        config=types.GenerateContentConfig(
-            tools=[
-                optimize_network_tool,
-                compare_network_scenarios,
-                analyze_threshold_range,
-            ],
-            system_instruction="""
-You are a network optimization assistant for a
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=question,
+            config=types.GenerateContentConfig(
+                tools=[
+                    optimize_network_tool,
+                    compare_network_scenarios,
+                    analyze_threshold_range,
+                    calculate_outage_tool,
+                    analyze_outage_range,
+                    analyze_optimized_network_reliability_tool,
+                ],
+                system_instruction="""
+You are a network optimization and reliability assistant for a
 Connected and Autonomous Vehicle (CAV) V2I network.
 
-Use the provided tools for all numerical network calculations.
-Never estimate or invent optimization results.
+Use the provided deterministic Python tools for all numerical
+network calculations.
+
+Never estimate, invent, or manually calculate optimization
+or reliability results.
 
 IMPORTANT TOOL SELECTION RULES:
 
-When the user asks about ONE network scenario,
+When the user asks about ONE network optimization scenario,
 use optimize_network_tool.
 
-When the user explicitly asks to compare TWO individual scenarios,
-use compare_network_scenarios.
+When the user explicitly asks to compare TWO individual
+optimization scenarios, use compare_network_scenarios.
 
-When the user asks how something changes FROM one threshold TO another,
-or asks for a range, trend, curve, sweep, graph, or plot,
-you MUST use analyze_threshold_range.
+When the user asks how optimization performance changes FROM
+one data-rate threshold TO another, or asks for a threshold
+range, trend, curve, sweep, graph, or plot,
+use analyze_threshold_range.
 
-For range analysis, use enough points to show the trend,
-normally 20 points unless the user specifies otherwise.
+For wireless reliability questions about ONE BS density and
+vehicle speed, use calculate_outage_tool.
 
-Use m/s for speed.
-Use Mbps or Gbps for data rates.
-Use BS/m for base station density.
-Traffic flow Q is measured in vehicles per second.
+For wireless reliability questions involving a BS-density
+range, trend, sweep, curve, graph, or plot,
+use analyze_outage_range.
 
-Mention when the maximum BS density constraint is reached.
+When the user asks to FIRST optimize the network and THEN
+evaluate wireless reliability at the optimized BS density,
+use analyze_optimized_network_reliability_tool.
+
+Examples of requests that require
+analyze_optimized_network_reliability_tool include:
+
+- "Optimize the network for 1 Gbps and evaluate outage at 15 m/s."
+- "What is the optimal BS density and what reliability would
+   that configuration have?"
+- "Find the optimal network configuration and then evaluate
+   its outage probability."
+- "What is the tradeoff between optimization and reliability?"
+
+The optimization model and reliability model have different
+evaluated BS-density ranges.
+
+The reliability model is evaluated for BS densities from
+0.001 to 0.02 BS/m.
+
+If analyze_optimized_network_reliability_tool returns
+reliability_domain_valid as false, DO NOT calculate,
+estimate, extrapolate, or invent an outage probability.
+
+Instead, clearly explain that the optimized BS density falls
+outside the evaluated operating range of the reliability model
+and therefore reliability was not evaluated.
+
+Do not describe an unavailable reliability result as zero
+outage or perfect reliability.
+
+Do not claim that the optimization model's maximum BS-density
+constraint has been reached unless the tool output explicitly
+states that the maximum constraint was reached.
+
+Do not infer this from the BS-density value yourself.
+
+For reliability analysis, 0.02 BS/m is the maximum evaluated
+BS density in the reliability model.
+
+When using analyze_optimized_network_reliability_tool,
+summarize the key optimization outputs including optimal BS density,
+optimal vehicle speed, achievable rate, and traffic flow before
+describing the reliability result or model-range limitation.
+
+Do not refer to thesis chapter numbers unless the user
+explicitly asks about the thesis.
+
 
 Respond in plain text.
 Do not use LaTeX or mathematical markup.
 """
-        ),
-    )
+            ),
+        )
 
-    return {
-        "answer": response.text,
-        "tool_result": latest_tool_result,
-    }
+        return {
+            "answer": response.text,
+            "tool_result": latest_tool_result,
+        }
+
+    except Exception as e:
+        print("GEMINI ERROR:", repr(e))
+
+        return {
+            "answer": (
+                "The AI service is temporarily unavailable. "
+                "Please try again shortly."
+            ),
+            "tool_result": latest_tool_result,
+            "error": str(e),
+        }
 
 
 if __name__ == "__main__":
@@ -213,3 +335,7 @@ if __name__ == "__main__":
 
         print("\nTool result:")
         print(result["tool_result"])
+
+        if result.get("error"):
+            print("\nError:")
+            print(result["error"])

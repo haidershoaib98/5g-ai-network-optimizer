@@ -24,22 +24,36 @@
         <h1>5G Network Intelligence Agent</h1>
 
         <p class="subtitle">
-            AI-assisted optimization of Connected and Autonomous
+            AI-assisted optimization, reliability analysis,
+            and research visualization for Connected and Autonomous
             Vehicle V2I networks.
         </p>
 
+
         <textarea
             id="questionInput"
-            placeholder="Example: How does traffic flow and BS density change from 900 Mbps to 1.1 Gbps for alpha 3?"
+            placeholder="Example: Optimize the network for 1 Gbps with path loss exponent 3, then evaluate reliability at 15 m/s."
         ></textarea>
 
-        <button id="askButton">
-            Ask Agent
-        </button>
 
-        <button id="thesisPlotButton">
-            Generate Thesis Plot
-        </button>
+        <div class="mode-actions">
+
+            <button
+                id="askButton"
+                class="primary-action"
+            >
+                AI Analysis
+            </button>
+
+            <button
+                id="thesisPlotButton"
+                class="secondary-action"
+            >
+                Research Plots
+            </button>
+
+        </div>
+
 
         <div
             id="loading"
@@ -65,13 +79,36 @@
         >
             <h2>Network Analysis Charts</h2>
 
-            <div class="chart-card">
-                <canvas id="trafficFlowChart"></canvas>
-            </div>
 
             <div class="chart-card">
-                <canvas id="bsDensityChart"></canvas>
+
+                <canvas
+                    id="trafficFlowChart"
+                ></canvas>
+
             </div>
+
+
+            <div class="chart-card">
+
+                <canvas
+                    id="bsDensityChart"
+                ></canvas>
+
+            </div>
+
+
+            <div
+                id="outageChartCard"
+                class="chart-card hidden"
+            >
+
+                <canvas
+                    id="outageChart"
+                ></canvas>
+
+            </div>
+
         </section>
 
 
@@ -87,8 +124,10 @@
     </main>
 
 
-    <!-- Chart.js must load BEFORE script.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js must load before script.js -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/chart.js"
+    ></script>
 
     <script src="script.js"></script>
 
